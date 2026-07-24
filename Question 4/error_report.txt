@@ -1,0 +1,4 @@
+2026-07-24 10:00:15 ERROR Connection timeout to database
+2026-07-24 10:00:25 ERROR Disk write failure
+2026-07-24 10:01:00 ERROR Database connection pool exhausted
+2026-07-24 10:01:10 ERROR Out of memory

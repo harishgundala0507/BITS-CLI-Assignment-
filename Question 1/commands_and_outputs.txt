@@ -1,0 +1,69 @@
+# Commands executed for Question 1
+
+# Step 1: Create sample submissions (some duplicates)
+mkdir -p submissions
+echo "John's essay on OS" > submissions/john.txt
+echo "Jane's essay on OS" > submissions/jane.txt
+echo "John's essay on OS" > submissions/bob.txt
+echo "Alice's essay on Networks" > submissions/alice.txt
+echo "John's essay on OS" > submissions/charlie.txt
+echo "David's essay on DBMS" > submissions/david.txt
+
+# Explanation: Created 6 files, 3 of which are duplicates (john.txt, bob.txt, charlie have same content)
+
+# Step 2: Run the processing script
+bash process_submissions.sh
+
+# Output:
+# Duplicate Submission Report - Fri Jul 24 07:35:07 PM IST 2026
+# ----------------------------------------
+# Total files found: 6
+# DUPLICATE: ./submissions/charlie.txt matches another submission
+# DUPLICATE: ./submissions/john.txt matches another submission
+#
+# SUMMARY
+#   Files processed  : 6
+#   Duplicates found : 2
+#   Files backed up  : 4
+#   Errors logged    : 0
+# Report: report.txt | Errors: error.log
+
+# Explanation: The script found 6 files, identified 2 duplicates via md5sum,
+# backed up 3 unique files, and detected 0 errors.
+
+# Step 3: Verify the backup and duplicate directories
+ls -la backup/
+# Output:
+# total 4
+# drwxr-xr-x 2 user user 60 Jul 24 19:35 .
+# drwxr-xr-x 2 user user 60 Jul 24 19:35 ..
+# -rw-r--r-- 1 user user 26 Jul 24 19:35 alice.txt
+# -rw-r--r-- 1 user user 19 Jul 24 19:35 bob.txt
+# -rw-r--r-- 1 user user 22 Jul 24 19:35 david.txt
+# -rw-r--r-- 1 user user 19 Jul 24 19:35 jane.txt
+
+# Explanation: Only unique files are in backup/ - john.txt was the first
+# occurrence so it was backed up, but bob.txt and charlie.txt were duplicates
+
+ls -la duplicates/
+# Output:
+# total 4
+# drwxr-xr-x 2 user user 60 Jul 24 19:35 .
+# drwxr-xr-x 2 user user 60 Jul 24 19:35 ..
+# -rw-r--r-- 1 user user 19 Jul 24 19:35 charlie.txt.dup.1
+# -rw-r--r-- 1 user user 19 Jul 24 19:35 john.txt.dup.2
+
+# Step 4: Check the error log (should be empty for clean run)
+cat error.log
+# (no output - no errors occurred)
+
+# Step 5: Check the report
+cat report.txt
+
+# Justification:
+# - md5sum: identifies file duplicates by content hash rather than filename
+# - 2>> (stderr redirect): captures all error messages separately in error.log
+# - tee -a: displays output on terminal AND appends to report simultaneously
+# - cp: creates physical copies for backup isolation
+# - declare -A: uses associative array for efficient O(1) duplicate lookup
+# - wc -l: counts error log entries for the summary

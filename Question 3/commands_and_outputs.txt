@@ -1,0 +1,59 @@
+# Commands executed for Question 3
+
+# Step 1: Compile the program
+gcc -o file_processor file_processor.c
+
+# Explanation: Compiled the file processor that uses Linux system calls
+# (open, read, write, lseek, close) instead of stdio functions.
+
+# Step 2: Run the program
+./file_processor
+
+# Output:
+# Created file with 3 employee records
+# Record 0: ID=101 Name=Alice Salary=50000.00
+# Record 1: ID=102 Name=Bob Salary=60000.00
+# Record 2: ID=103 Name=Charlie Salary=55000.00
+#
+# --- Updating Bob's salary ---
+# Updated employee 102 salary to 75000.00
+#
+# --- Reading all records after update ---
+# Record 0: ID=101 Name=Alice Salary=50000.00
+# Record 1: ID=102 Name=Bob Salary=75000.00
+# Record 2: ID=103 Name=Charlie Salary=55000.00
+#
+# --- Reading record at index 2 directly ---
+# Record 2: ID=103 Name=Charlie Salary=55000.00
+
+# Explanation: The program created a binary file with 3 employee records,
+# then updated Bob's salary from 60000 to 75000 without rewriting the entire
+# file by using lseek to reposition the write cursor. Finally, it read a
+# specific record directly by seeking to that record's byte offset.
+
+# How each system call contributes:
+#
+# open(path, flags, mode):
+#   O_CREAT|O_WRONLY|O_TRUNC creates a new file (or truncates existing).
+#   O_RDWR opens for both reading and writing (needed for updates).
+#   The mode 0644 sets rw-r--r-- permissions.
+#   Returns a file descriptor (int) used by all other calls.
+#
+# write(fd, buffer, size):
+#   Writes sizeof(Employee) bytes to the file at the current offset.
+#   For creation, we write 3 consecutive records (appends sequentially).
+#   For updates, we write one record at the position lseek positioned us to.
+#
+# lseek(fd, offset, whence):
+#   SEEK_SET: move to absolute position (used to jump to a record by index).
+#   SEEK_CUR: move relative to current position (used to go back sizeof(Employee)
+#   bytes after reading, so we can overwrite the same record).
+#   Allows random access to any record without reading the whole file.
+#
+# read(fd, buffer, size):
+#   Reads sizeof(Employee) bytes into the struct. Returns number of bytes
+#   read (0 at EOF, negative on error). Used in a loop to scan records.
+#
+# close(fd):
+#   Releases the file descriptor and flushes any kernel buffers.
+#   Essential for resource cleanup and avoiding fd leaks.

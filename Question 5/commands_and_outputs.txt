@@ -1,0 +1,52 @@
+ 1. Swap Files (the most reliable recovery mechanism)
+    - vi auto-saves the buffer to a .filename.swp file every ~4 seconds
+      (controlled by 'updatetime' option, default 4000ms)
+    - Survives system crashes because it's on disk
+    - vi -r recovers the full editing state including cursor position
+    - Located next to the original file or in /tmp
+    - RELIABILITY: HIGH - This is the PRIMARY recovery mechanism
+
+ 2. Undo History
+    - Stored in memory only
+    - u command undoes changes, :earlier/:later navigates undo tree
+    - COMPLETELY LOST after a crash
+    - RELIABILITY: NONE for crash recovery
+
+ 3. Registers
+    - "ayy yanks text to register a, "ap pastes it
+    - Like undo history, registers are in-memory only
+    - LOST after crash
+    - RELIABILITY: NONE for crash recovery
+    - Useful for deliberate copy-paste during a session, not for recovery
+
+ 4. Backup Files
+    - Created when 'backup' option is set: filename~ contains previous
+      version of the file before you started editing
+    - Located in same directory
+    - Preserves the ORIGINAL file, not your unsaved edits
+    - RELIABILITY: MEDIUM - you get the pre-edit version, not what you typed
+
+ 5. Auto-recovery (vi -r)
+    - Built-in feature that reads swap files
+    - Works even after kernel panic or power failure
+    - Prompts the user: "Swap file found. Use :recover to get changes back"
+    - RELIABILITY: HIGHEST - This is vi's designed crash recovery path
+
+ PROPOSED RECOVERY STRATEGY (Most Reliable)
+
+Check for swap files: ls -la /etc/nginx/.nginx.conf.swp
+Recover with: vi -r /etc/nginx/nginx.conf
+Within vi, verify the content is correct
+Save the recovered file: :w /etc/nginx/nginx.conf.recovered
+Exit: :q
+Compare with original if needed: diff /etc/nginx/nginx.conf
+/etc/nginx/nginx.conf.recovered
+Replace original if recovered version is correct:
+cp /etc/nginx/nginx.conf.recovered /etc/nginx/nginx.conf
+Remove the swap file: rm /etc/nginx/.nginx.conf.swp
+
+Justification: Swap files are the ONLY mechanism that preserves your
+unsaved edits on disk. Backups preserve the old version, not your work.
+Undo history and registers are in-memory and lost on crash. The
+combination of vi -r + manual verification gives the most reliable path
+to recover work that would otherwise be completely lost.

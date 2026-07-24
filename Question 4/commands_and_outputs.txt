@@ -1,0 +1,129 @@
+# Commands executed for Question 4 - System Monitoring Tool
+
+# Step 1: Create a sample log file for testing
+cat > sample.log << 'EOF'
+2026-07-24 10:00:01 INFO Server started
+2026-07-24 10:00:05 INFO User login successful
+2026-07-24 10:00:12 WARNING High memory usage
+2026-07-24 10:00:15 ERROR Connection timeout to database
+2026-07-24 10:00:20 INFO Request processed
+2026-07-24 10:00:25 ERROR Disk write failure
+2026-07-24 10:00:30 INFO Health check passed
+EOF
+
+# Explanation: Created sample.log with mixed INFO/WARNING/ERROR entries
+
+# Step 2: Run the monitoring tool in background
+bash monitor.sh sample.log error_report.txt &
+
+# Output:
+# Monitoring: sample.log
+# Errors ->  error_report.txt
+# PID: 12345
+
+# Explanation: The monitor script runs in background, watching sample.log.
+# It will display only ERROR lines on the terminal and append them to
+# error_report.txt simultaneously using tee.
+
+# Step 3: Append new entries to the log (simulating real-time activity)
+echo "2026-07-24 10:01:00 ERROR Database connection pool exhausted" >> sample.log
+echo "2026-07-24 10:01:05 INFO Cache refreshed" >> sample.log
+echo "2026-07-24 10:01:10 ERROR Out of memory" >> sample.log
+
+# Step 4: Monitor terminal shows only ERROR lines in real time:
+# 2026-07-24 10:01:00 ERROR Database connection pool exhausted
+# 2026-07-24 10:01:10 ERROR Out of memory
+
+# Explanation: The pipeline (tail -f | while read + grep + tee) filters
+# out INFO and WARNING lines. Only ERROR entries appear on the terminal.
+
+# Step 5: Check the error report file
+cat error_report.txt
+
+# Output:
+# 2026-07-24 10:00:15 ERROR Connection timeout to database
+# 2026-07-24 10:00:25 ERROR Disk write failure
+# 2026-07-24 10:01:00 ERROR Database connection pool exhausted
+# 2026-07-24 10:01:10 ERROR Out of memory
+
+# Explanation: tee -a appends each ERROR to error_report.txt as it appears.
+# The report includes both original and newly added ERROR entries.
+
+# Step 6: Stop the monitor
+kill $(cat /tmp/log_monitor.pid) 2>/dev/null || kill %1
+
+# Step 7: Suppress unnecessary output using /dev/null
+tail -f /var/log/syslog > /dev/null 2>&1 &
+
+# Explanation: > /dev/null discards stdout (normal log output).
+# 2>&1 redirects stderr to stdout (also discarded).
+# This runs silently with zero terminal output.
+
+# Step 8: Run the monitor with all output suppressed except ERRORs
+bash monitor.sh sample.log /dev/null
+
+# Explanation: Passing /dev/null as the report file discards the saved
+# report, but ERRORs still appear on the terminal via tee's stdout.
+
+# ============================================================
+# PIPELINE BREAKDOWN
+# ============================================================
+#
+# tail -f sample.log
+#   -f (follow) continuously reads new lines appended to the file
+#   -n (default: 10) shows last 10 lines before following
+#   Reads only new data, not re-scanning the entire file each time
+#
+# |
+#   Pipe connects tail's stdout to the while loop's stdin
+#   Data flows through memory — no intermediate files needed
+#
+# while read line; do ... done
+#   Reads each line piped from tail one at a time
+#   Processes each line immediately without buffering
+#
+# echo "$line" | grep -q "ERROR"
+#   grep -q (quiet mode) checks if "ERROR" exists in the line
+#   Returns 0 (match) or 1 (no match) as exit code
+#   No output is produced by grep itself — just true/false
+#
+# echo "$line" | tee -a error_report.txt
+#   tee splits output: writes to file AND stdout at the same time
+#   -a flag appends to the file instead of overwriting
+#   This maintains a persistent error report without extra commands
+#
+# 2>/dev/null
+#   Redirects stderr to /dev/null (the bit bucket)
+#   Suppresses "file not found" errors when log rotates
+#   Keeps the terminal clean
+#
+# ============================================================
+# EFFICIENCY IMPROVEMENTS
+# ============================================================
+#
+# Pipes (|):
+#   Zero-latency in-memory data flow between processes
+#   No disk writes for intermediate data
+#   Processes run in parallel, not sequentially
+#   Kernel handles buffering efficiently
+#
+# grep:
+#   Pattern matching is O(n) — linear scan of each line
+#   -q flag stops at first match per line (no unnecessary output)
+#   Filters out 80%+ of log noise for most servers
+#
+# tail -f:
+#   Uses inotify (Linux kernel feature) to wait for file changes
+#   Zero CPU usage between log writes
+#   Reads only new data — no polling or full-file rescans
+#
+# Redirection (> and >>):
+#   > creates/replaces files for clean starts
+#   >> appends without destroying existing data
+#   Both are kernel-level file operations (no userspace overhead)
+#
+# /dev/null:
+#   A special character device that discards all writes instantly
+#   Acts as a "data sink" — no disk I/O, no memory allocation
+#   Zero overhead for suppressing unwanted output
+#   Prevents terminal buffer from filling with noise

@@ -1,0 +1,10 @@
+2026-07-24 10:00:01 INFO Server started
+2026-07-24 10:00:05 INFO User login successful
+2026-07-24 10:00:12 WARNING High memory usage
+2026-07-24 10:00:15 ERROR Connection timeout to database
+2026-07-24 10:00:20 INFO Request processed
+2026-07-24 10:00:25 ERROR Disk write failure
+2026-07-24 10:00:30 INFO Health check passed
+2026-07-24 10:01:00 ERROR Database connection pool exhausted
+2026-07-24 10:01:05 INFO Cache refreshed
+2026-07-24 10:01:10 ERROR Out of memory

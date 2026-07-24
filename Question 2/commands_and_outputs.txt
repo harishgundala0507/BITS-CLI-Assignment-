@@ -1,0 +1,64 @@
+# Commands executed for Question 2
+
+# Step 1: Compile the C program
+gcc -o process_monitor process_monitor.c
+
+# Explanation: Compiled the process monitor program that demonstrates fork(),
+# waitpid(), and signal handling for zombie prevention and child termination.
+
+# Step 2: Run the program
+./process_monitor
+
+# Output:
+# [PARENT] PID: 14190
+# [PARENT] Created child PID 14191
+# [PARENT] Created child PID 14192
+# [PARENT] Created child PID 14193
+# [PARENT] Created child PID 14194
+# [PARENT] Created child PID 14195
+#
+# [PARENT] Setting 5 sec alarm for slow children
+# [PARENT] Monitoring children...
+# [PARENT] Reaped child PID 14191 (exit: 0)
+# [PARENT] Reaped child PID 14193 (exit: 0)
+# [PARENT] Reaped child PID 14195 (exit: 0)
+#
+# [PARENT] Timeout reached. Killing unresponsive children...
+# [PARENT] Sending SIGKILL to PID 14192
+# [PARENT] Sending SIGKILL to PID 14194
+# [PARENT] Reaped child PID 14192 (killed by signal 9)
+# [PARENT] Reaped child PID 14194 (killed by signal 9)
+#
+# [PARENT] All done. Zombies prevented.
+
+# Explanation: Even-numbered children (1,3,5) finished in 2 seconds and were
+# reaped by the SIGCHLD handler immediately. Odd-numbered children (2,4) took
+# 10 seconds, which exceeded the 5-second alarm, so SIGALRM fired and sent
+# SIGKILL to terminate them. waitpid() with WNOHANG reaped all children
+# instantly, preventing any zombie processes.
+
+# Step 3: Verify no zombie processes remain
+ps aux | grep defunct | grep -v grep || echo "No zombie processes"
+
+# Output:
+# No zombie processes
+
+# Explanation: Confirms no zombie (defunct) processes were left behind.
+# The SIGCHLD handler's waitpid() with WNOHANG ensures every terminated
+# child is immediately reaped.
+
+# Explanation of process creation, waiting, and signal handling:
+#
+# fork(): Creates child processes. Returns 0 to child, child PID to parent.
+# Each child gets a copy of parent's memory and starts executing from the
+# same point after fork().
+#
+# waitpid(): The SIGCHLD handler calls waitpid(-1, &status, WNOHANG) in a
+# loop. -1 means "any child", WNOHANG makes it non-blocking. This reaps
+# terminated children immediately, preventing them from becoming zombies.
+#
+# Signal handling: SIGALRM is triggered after TIMEOUT seconds via alarm().
+# The handler sends SIGKILL to unresponsive children. SIGCHLD fires
+# whenever a child terminates (naturally or via signal), triggering the
+# reaping loop. This combination of alarm-based timeout and SIGCHLD-based
+# reaping ensures no process is left unresponsive and no zombie is created.
